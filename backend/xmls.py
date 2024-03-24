@@ -1,10 +1,11 @@
 # Global Imports
 import xmltodict
 import os
-from typing import Generator
+import tqdm
+from   typing import Generator
 
 # Local Imports
-from backend.models import CteXML
+from backend.models import CteXML, loading
 
 
 to_float = lambda value : round(float(value.replace(',', '.')), 2)
@@ -66,6 +67,7 @@ def getXmlData(filename:str)->CteXML:
         cte_data = {
             'cte' : int(json_data['ide']['nCT']),
             'nfe' : int(json_data['infCTeNorm']['infDoc']['infNFe']['chave'][25:34]),
+            'serie_nfe' : int(json_data['infCTeNorm']['infDoc']['infNFe']['chave'][22:25]),
             'rem_cnpj' : json_data['rem']['CNPJ'],
             'rem_nome' : json_data['rem']['xNome'],
             'dest_id' : dest_id,
@@ -85,15 +87,14 @@ def getXmlData(filename:str)->CteXML:
     errors_list.insert(0, f'Um ou mais erros aconteceram no arquivo: {filename}: ')
     return errors_list
 
-
+@loading("Carregando XMLs", "XMLs carregados")
 def getXmlList(path:str)->Generator[CteXML, None, None]:
-    for filename in os.listdir(path):
-        if filename.endswith('.xml'):
-            try:
-                xml_data = getXmlData(os.path.join(path, filename))
-                if type(xml_data) == CteXML:
-                    yield getXmlData(os.path.join(path, filename))
-                    continue
-                print(*xml_data, sep='\n')
-            except Exception as e:
-                print(e)
+    files = [f for f in os.listdir(path) if f.endswith('.xml')]
+    for filename in tqdm.tqdm(files, "Carregando XMLs"):
+        try:
+            xml_data = getXmlData(os.path.join(path, filename))
+            if type(xml_data) == CteXML:
+                yield getXmlData(os.path.join(path, filename))
+                continue
+        except Exception as e:
+            print(e)
